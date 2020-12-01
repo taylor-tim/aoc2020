@@ -4,9 +4,7 @@ import sys
 
 
 def get_answer(target: int, total_nums: int = 2, data: list = None) -> int:
-    if data is None:
-        with open('puzzle_input') as infile:
-            data = [int(i.rstrip()) for i in infile.readlines()]
+    data = data or get_data()
 
     filtered = [i for i in data if i < target + total_nums]
     for num in filtered:
@@ -31,7 +29,10 @@ def get_slice(index: int, data: list):
         return data[0:index] + data[index + 1:]
 
 
-if __name__ == '__main__':
+def get_data() -> list:
     with open('puzzle_input') as infile:
-        data = [int(i.rstrip()) for i in infile.readlines()]
-    print(get_answer(2020, int(sys.argv[1]), data))
+        return [int(i.rstrip()) for i in infile.readlines()]
+
+
+if __name__ == '__main__':
+    print(get_answer(2020, int(sys.argv[1])))
