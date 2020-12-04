@@ -3,13 +3,13 @@
 import re
 
 
-def get_data():
+def get_data() -> str:
     with open('puzzle_input') as infile:
         data = infile.read()
     return data
 
 
-def parse_data(data: str):
+def parse_data(data: str) -> list:
     passports = []
 
     splits = data.split('\n\n')
@@ -17,8 +17,16 @@ def parse_data(data: str):
         consistent = line.replace('\n', ' ')
         groups = consistent.split()
         passport = PassPort()
+
         for item in groups:
-            k, v = item.split(':')
+            k, v = item.split(':', 2)
+            if k in ['byr', 'iyr', 'eyr']:
+                try:
+                    v = int(v)
+                except ValueError:
+                    v = 0
+            elif k == 'hgt':
+                v = convert_hgt(v)
             passport[k] = v
 
         passports.append(passport)
@@ -26,57 +34,55 @@ def parse_data(data: str):
     return passports
 
 
-class PassPort(dict):
-    required = [
-        'byr',
-        'iyr',
-        'eyr',
-        'hgt',
-        'hcl',
-        'ecl',
-        'pid'
-    ]
-    optional = [
-        'cid'
-    ]
+def convert_hgt(value: str):
+    if value.endswith('cm'):
+        return int(value.replace('cm', ''))
 
-    eye_colors = ['amb', 'blu', 'brn', 'gry', 'grn', 'hzl', 'oth']
-    hcl_regex = re.compile(r'#[0-9a-f]{6}')
+    elif value.endswith('in'):
+        return int(round(int(value.replace('in', '')) * 2.54))
+
+    return 0
+
+
+class PassPort(dict):
+    req = {
+        'byr': {'min': 1920, 'max': 2002},
+        'iyr': {'min': 2010, 'max': 2020},
+        'eyr': {'min': 2020, 'max': 2030},
+        'hgt': {'min': 150, 'max': 193},
+        'hcl': re.compile(r'#[0-9a-f]{6}'),
+        'ecl': ['amb', 'blu', 'brn', 'gry', 'grn', 'hzl', 'oth'],
+        'pid': re.compile(r'^[0-9]{9}$')
+    }
 
     @property
     def valid(self):
-        return all([self.get(i) for i in self.required])
+        return all([self.get(i) for i in self.req.keys()])
 
     @property
     def strictly_valid(self):
+        int_based = ['byr', 'iyr', 'eyr', 'hgt']
         items = [
-            1920 <= self.try_int(self.get('byr', 0)) <= 2002,
-            2010 <= self.try_int(self.get('iyr', 0)) <= 2020,
-            2020 <= self.try_int(self.get('eyr', 0)) <= 2030,
-            self.validate_hgt(),
-            self.validate_hcl(),
-            str(self.get('ecl', '')) in self.eye_colors,
-            len(str(self.get('pid', '0'))) == 9
+            self.req[i]['min'] <= self.get(
+                i, 0
+            ) <= self.req[i]['max'] for i in int_based
         ]
-        return all(items)
+        items.append(self.req['hcl'].match(self.get('hcl', '0')))
+        items.append(str(self.get('ecl', '')) in self.req['ecl'])
+        items.append(self.req['pid'].match(self.get('pid', '0')))
 
-    def validate_hcl(self):
-        return self.hcl_regex.match(self.get('hcl', '0'))
+        return all(items)
 
     def validate_hgt(self):
         hgt = str(self.get('hgt', '0cm'))
+
         if hgt.endswith('cm'):
             return 150 <= int(hgt.replace('cm', '')) <= 193
+
         elif hgt.endswith('in'):
             return 59 <= int(hgt.replace('in', '')) <= 76
 
         return False
-
-    def try_int(self, value):
-        try:
-            return int(value)
-        except ValueError:
-            return 0
 
 
 def solve():
